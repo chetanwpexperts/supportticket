@@ -383,7 +383,7 @@ class PanelController extends Controller
 			//}
             //$data = $tickets;
 			
-			$tickets = Addticket::join('intractions', 'addtickets.ticket_number', '=', 'intractions.ticket_number')->groupBy('addtickets.ticket_number')
+			$tickets = Addticket::join('intractions', 'addtickets.ticket_number', '=', 'intractions.ticket_number')->where('user_id',$user->id)->orwhere('assignedTo',$user->id)->groupBy('addtickets.ticket_number')
                ->get(['addtickets.*', 'intractions.*']);
 			$data = $tickets;
             $dynamic_agent_id = $user->id;
@@ -393,7 +393,7 @@ class PanelController extends Controller
             return view('myaccount', compact('assignedtickets','data','dynamic_agent_name','dynamic_agent_id','dynamic_agent_email','dynamic_agent_role'));
         }
         
-         return redirect("login")->withSuccess('You are not allowed to access');
+        return redirect("login")->withSuccess('You are not allowed to access');
     }
 
     public function reports()
@@ -465,8 +465,29 @@ class PanelController extends Controller
             }
         }
         die;
-        
     }
+	
+	public function ajaxOrderRequest(Request $request)
+	{
+		$details = array();
+		$obj = "";
+		$customerDetails = DB::table('addtickets')->where('order_number', $request->input('order_number'))->first();
+
+        if(collect($customerDetails)->isEmpty())
+        {
+			$details['empty'] = "empty";
+        }else{
+            $details['customerName'] = $customerDetails->customer_name;
+			$details['product_id'] = $customerDetails->product_id;
+			$details['phone'] = $customerDetails->phone;
+			$details['email'] = $customerDetails->email;
+			$details['calltype'] = $customerDetails->call_type;
+			$details['subj'] = $customerDetails->subject;
+        }
+		$obj = json_encode($details);
+		echo $obj;
+		die;
+	}
     
     public function ajaxFileUpload(Request $request)
     {
