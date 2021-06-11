@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use App\Http\Requests;
 use App\Models\Addticket;
 use App\Models\TicketAttachments;
@@ -13,9 +14,34 @@ use Mail;
 
 class PanelController extends Controller
 {
+    public $agent_id = "1";
+    
+    public function __contstruct()
+    {
+        $user = auth()->user();
+        $this->agent_id = $user->id;
+    }
     public function index()
     {
-        return view('panel');
+        if(Auth::check()){
+            $user = auth()->user();
+            $dynamic_agent_id = $user->id;
+            $dynamic_agent_email = $user->email;
+            $dynamic_agent_role = $user->role;
+            $dynamic_agent_name = $user->name;
+            if($dynamic_agent_role == "admin")
+            {
+                $totalTickets = DB::table('addtickets')->count();
+                $openTickets = DB::table('addtickets')->where('status','open')->count();
+                $closeTickets = DB::table('addtickets')->where('status','close')->count();
+                $alltickets = DB::table('addtickets')->get();
+                return view('admin/index',compact('dynamic_agent_name','dynamic_agent_id','dynamic_agent_email','dynamic_agent_role','alltickets','totalTickets','openTickets','closeTickets'));
+            }else{
+                return view('panel',compact('dynamic_agent_name','dynamic_agent_id','dynamic_agent_email','dynamic_agent_role'));
+            }
+        }
+        
+        return redirect("login")->withSuccess('You are not allowed to access');
     }
     
     /**
@@ -25,7 +51,16 @@ class PanelController extends Controller
      */
     public function create()
     {
-        return view('addticket', []);
+        if(Auth::check()){
+            $user = auth()->user();
+            $dynamic_agent_id = $user->id;
+            $dynamic_agent_email = $user->email;
+            $dynamic_agent_role = $user->role;
+            $dynamic_agent_name = $user->name;
+            return view('addticket', compact('dynamic_agent_name','dynamic_agent_id','dynamic_agent_email','dynamic_agent_role'));
+        }
+        
+        return redirect("login")->withSuccess('You are not allowed to access');
     }
 
     /**
@@ -36,13 +71,8 @@ class PanelController extends Controller
      */
     public function store(Request $request)
     {
-        //echo "<pre>";
-        //print_r($request->input());
-        // print_r($request->file); die;
-       
-        
         $request->validate([
-            'file' => 'mimes:jpeg,jpg,png,gif,pdf,xlx,csv|max:2048',
+            'file.*' => 'mimes:jpeg,jpg,png,gif,pdf,xlx,csv|max:2048',
         ]);
         
         $var = new Addticket();
@@ -53,16 +83,34 @@ class PanelController extends Controller
         $var->call_type = $request->input('call_type');
         $var->department_id = $request->input('department_id');
         $var->product_id = $request->input('product_id');
+        $var->customer_name = $request->input('customer_name');
         $var->phone = $request->input('phone');
         $var->email = $request->input('email');
         $var->subject = $request->input('subject');
         $var->notes = $request->input('notes');
         $var->internal_notes = $request->input('internal_notes');
         $var->user_id = $request->input('user_id');
-        $var->open = 1;
-        $var->close = (null !== $request->input('close') ) ? $request->input('close'):0;
-        $var->assign = 0;
-        
+        $var->status = $request->input('status');
+        if($var->status == "open")
+        {
+            $var->open = 1;
+            $var->assign = 0;
+            $var->close = 0;
+        }else if($var->status == "close")
+        {
+            $var->close = 1;
+            $var->open = 0;
+            $var->assign = 0;
+        }else if($var->status == "assign")
+        {
+            $var->assign = 1;
+            $var->open = 0;
+            $var->close = 0;
+        }else{
+            $var->open = 1;
+            $var->assign = 0;
+            $var->close = 0;
+        }
         $var->save();
         
         $insertedId = $var->id;
@@ -73,7 +121,7 @@ class PanelController extends Controller
              * add notes
              */
             $intraction = new Intractions();
-            
+
             $intraction->ticket_number = $request->input('ticket_number');
             $intraction->notes = $request->input('notes');
             $intraction->internal_notes = $request->input('internal_notes');
@@ -82,23 +130,27 @@ class PanelController extends Controller
             
             $intraction_id = $intraction->id;
             
-            /*$files = [];
-            if($request->hasfile('file'))
+            /**
+             * file upload
+             **/
+            if($request->hasfile('file')) 
             {
                 foreach($request->file('file') as $file)
                 {
-                    $name = time().'_'.$file->getClientOriginalName();
-                    $filePath = $file->file('file')->storeAs('uploads', $name, 'public');
-                    $files['ticket_number'] = $request->input('ticket_number');
-                    $files['file'] = $filePath; 
+                    $fileName = time().'_'.$file->getClientOriginalName();
+                    $filePath = $file->storeAs('uploads', $fileName, 'public');
+                    //$imgData[] = $fileName;
+                    $imgData[] = $filePath;
                 }
                 
-                $varattachment = new TicketAttachments();
-                $varattachment->ticket_number = $files['ticket_number'];
-                $varattachment->file = $files['file'];
+                $imagespath = json_encode($imgData);
+                $varattachment->file = $imagespath;
+                $varattachment->ticket_number = $request->input('ticket_number');
+                $varattachment->intraction_id = $intraction_id;
+                $varattachment->agent_id = $request->input('user_id');
                 $varattachment->save();
-            }*/
-             
+            }
+            /*
             if($request->file()) {
                 $fileName = time().'_'.$request->file->getClientOriginalName();
                 $filePath = $request->file('file')->storeAs('uploads', $fileName, 'public');
@@ -106,19 +158,25 @@ class PanelController extends Controller
             }else{
                 $varattachment->file = null;
             }
+            
             $varattachment->ticket_number = $request->input('ticket_number');
             $varattachment->intraction_id = $intraction_id;
             $varattachment->save();   
+            */
         }
-        
+        $customer_email = $request->input('email');
+        $customer_name = $request->input('customer_name');
+        $notes = $request->input('notes');
+        $agentname = DB::table('users')->select('name')->where('id', $request->input('user_id'))->first();
+        $agentname = $agentname->name;
         $arr = array(
             "mail_id"=> 7,
-            "subject"=> $addticket->ticket_number,
-            "body"=> $intraction->notes,
+            "subject"=> "#".$var->ticket_number."-". $request->input('subject'),
+            "body"=> view('emails.thankyouemail',compact('customer_name', 'notes','agentname'))->render(),
             "to"=>array(
                     array(
-                        "email"=> $addticket->email,
-                        "name" => ""
+                        "email"=> $request->input('email'),
+                        "name" => $request->input('customer_name')
                     )
                 )
         );
@@ -133,7 +191,7 @@ class PanelController extends Controller
         $result = curl_exec($ch);
         curl_close($ch);
 
-        return redirect()->route('panel.index')->with('success','Ticket created successfully.');
+        return redirect()->route('panel.thankyou')->with('success','Ticket created successfully.');
     }
 
     /**
@@ -144,17 +202,47 @@ class PanelController extends Controller
      */
     public function show($id)
     {
-        $recent_tickets = DB::table('addtickets')->limit(5)->orderBy('id', 'DESC')->get();
-        $products = DB::table('products')->get();
-        $agents = DB::table('users')->get();
-        $product = $products;
-        $departments = DB::table('departments')->get();
-        $data = $departments;
-        $tickets = DB::table('addtickets')->where('ticket_number',$id)->get();
-        $notes = DB::table('intractions')->where('ticket_number',$id)->orderBy('created_at', 'DESC')->get();
-        $intractionCount = count($notes);
-        $attachments = DB::table('ticket_attachments')->where('ticket_number',$id)->orderBy('created_at', 'DESC')->get();
-        return view('panel.show', compact('data','product','tickets','notes','recent_tickets','agents','attachments','intractionCount'));
+        if(Auth::check()){
+            $user = auth()->user();
+            if($user->role == "admin")
+                $recent_tickets = DB::table('addtickets')->limit(5)->orderBy('id', 'DESC')->get();
+            else
+                $recent_tickets = DB::table('addtickets')->where('user_id',$user->id)->limit(5)->orderBy('id', 'DESC')->get();
+            // $recent_tickets = DB::table('addtickets')->where('user_id',$user->id)->limit(5)->orderBy('id', 'DESC')->get();
+            $products = DB::table('products')->get();
+            $agents = DB::table('users')->where([['role', '!=', 'admin']])->get();
+            $product = $products;
+            $departments = DB::table('departments')->get();
+            $data = $departments;
+            $tickets = DB::table('addtickets')->where('ticket_number',$id)->get();
+            $checkifticketassigned = DB::table('addtickets')->where('ticket_number',$id)->where('user_id',$user->id)->where('assign',1)->get();
+            $checkifticketassignedtome = DB::table('intractions')->where('ticket_number',$id)->get();
+            $assignedTicketsArr = array();
+            $assignedToTicketsArr = array();
+            foreach($checkifticketassignedtome as $assignedTickets)
+            {
+                if($assignedTickets->assignedBy != "")
+                {
+                    $assignedTicketsArr[] = $assignedTickets;
+                }
+                
+                if($assignedTickets->assignedTo != "")
+                {
+                    $assignedToTicketsArr[] = $assignedTickets;
+                }
+            }
+            $notes = DB::table('intractions')->where('ticket_number',$id)->orderBy('created_at', 'DESC')->get();
+            $intractionCount = count($notes);
+            $attachments = DB::table('ticket_attachments')->where('ticket_number',$id)->orderBy('created_at', 'DESC')->get();
+            $atch = $attachments;
+            $dynamic_agent_id = $user->id;
+            $dynamic_agent_email = $user->email;
+            $dynamic_agent_name = $user->name;
+            $dynamic_agent_role = $user->role;
+            return view('panel.show', compact('attachments','atch','dynamic_agent_name','dynamic_agent_role','assignedToTicketsArr','assignedTicketsArr','checkifticketassigned','dynamic_agent_id','dynamic_agent_email','data','product','tickets','notes','recent_tickets','agents','intractionCount'));
+        }
+        
+        return redirect("login")->withSuccess('You are not allowed to access');
     }
 
     /**
@@ -178,7 +266,7 @@ class PanelController extends Controller
     public function update(Request $request, $id)
     {
         $request->validate([
-            'file' => 'mimes:jpeg,jpg,png,gif,pdf,xlx,csv|max:2048',
+            'file.*' => 'mimes:jpeg,jpg,png,gif,pdf,xlx,csv|max:2048',
         ]);
         
         $var = Addticket::find($id);
@@ -189,18 +277,34 @@ class PanelController extends Controller
         $var->call_type = $request->input('call_type');
         $var->department_id = $request->input('department_id');
         $var->product_id = $request->input('product_id');
+        $var->customer_name = $request->input('customer_name');
         $var->phone = $request->input('phone');
         $var->email = $request->input('email');
         $var->subject = $request->input('subject');
         $var->notes = $request->input('notes');
         $var->internal_notes = $request->input('internal_notes');
-        $var->user_id = $request->input('user_id');
-        $var->close = (null !== $request->input('close') ) ? $request->input('close'):0;
-        if($var->close == 1)
+        // $var->user_id = $request->input('user_id');
+        $var->status = $request->input('status');
+        if($var->status == "open")
+        {
+            $var->open = 1;
+            $var->close = 0;
+            $var->assign = 0;
+        }else if($var->status == "close")
         {
             $var->open = 0;
+            $var->close = 1;
+            $var->assign = 0;
+        }else if($var->status == "assign")
+        {
+            $var->assign = 1;
+            $var->close = 0;
+            $var->open = 0;
+            
         }else{
             $var->open = 1;
+            $var->assign = 0;
+            $var->close = 0;
         }
         $var->save();
         /**
@@ -216,35 +320,42 @@ class PanelController extends Controller
         
         $intraction_id = $intraction->id;
         
-        /*$files = [];
-        if($request->hasfile('file'))
+        /**
+         * file upload
+         **/
+        if($request->hasfile('file')) 
         {
             foreach($request->file('file') as $file)
             {
-                $name = time().'_'.$file->getClientOriginalName();
-                $filePath = $file->file('file')->storeAs('uploads', $name, 'public');
-                $files['ticket_number'] = $request->input('ticket_number');
-                $files['file'] = $filePath; 
+                $fileName = time().'_'.$file->getClientOriginalName();
+                $filePath = $file->storeAs('uploads', $fileName, 'public');
+                //$imgData[] = $fileName;
+                $imgData[] = $filePath;
             }
             
-            $varattachment = new TicketAttachments();
-            $varattachment->ticket_number = $files['ticket_number'];
-            $varattachment->file = $files['file'];
+            $imagespath = json_encode($imgData);
+            $varattachment->file = $imagespath;
+            $varattachment->ticket_number = $request->input('ticket_number');
+            $varattachment->intraction_id = $intraction_id;
+            $varattachment->agent_id = $request->input('user_id');
             $varattachment->save();
-        }*/
-         
+        }
+        
+        /* 
         if($request->file()) {
             $fileName = time().'_'.$request->file->getClientOriginalName();
             $filePath = $request->file('file')->storeAs('uploads', $fileName, 'public');
             $varattachment->file = $filePath;
         }else{
                 $varattachment->file = null;
-            }
+        }
+        
         $varattachment->intraction_id = $intraction_id;
         $varattachment->ticket_number = $request->input('ticket_number');
         $varattachment->save();
+        */
         
-        return redirect()->route('panel.index')->with('success','Ticket Updated Successfully.');
+        return redirect()->route('panel.thankyou')->with('success',"Ticket Updated Successfully.");
     }
 
     /**
@@ -260,9 +371,29 @@ class PanelController extends Controller
     
     public function myAccount()
     {
-        $tickets = DB::table('addtickets')->get();
-        $data = $tickets;
-        return view('myaccount', compact('data'));
+        if(Auth::check()){
+			$assignedtickets = array();
+            $user = auth()->user();
+            //$tickets = DB::table('addtickets')->where('user_id',$user->id)->get();
+			//$assigned_tickets = DB::table('intractions')->where('assignedTo',$user->id)->get();
+			//foreach($assigned_tickets as $ast)
+			//{
+				//$astickets = DB::table('addtickets')->where('ticket_number',$ast->ticket_number)->get();
+				//$tickets = $astickets;
+			//}
+            //$data = $tickets;
+			
+			$tickets = Addticket::join('intractions', 'addtickets.ticket_number', '=', 'intractions.ticket_number')->groupBy('addtickets.ticket_number')
+               ->get(['addtickets.*', 'intractions.*']);
+			$data = $tickets;
+            $dynamic_agent_id = $user->id;
+            $dynamic_agent_email = $user->email;
+            $dynamic_agent_role = $user->role;
+            $dynamic_agent_name = $user->name;
+            return view('myaccount', compact('assignedtickets','data','dynamic_agent_name','dynamic_agent_id','dynamic_agent_email','dynamic_agent_role'));
+        }
+        
+         return redirect("login")->withSuccess('You are not allowed to access');
     }
 
     public function reports()
@@ -277,14 +408,25 @@ class PanelController extends Controller
             echo "<pre>";
             print_r($id);
         }
-        $agents = DB::table('users')->get();
-        $tickets = DB::table('addtickets')->limit(5)->orderBy('id', 'DESC')->get();
-        $products = DB::table('products')->get();
-        $product = $products;
-        $departments = DB::table('departments')->get();
-        $data = $departments;
-        return view('addticket', compact('data','product','tickets','agents'));
-     }
+        if(Auth::check()){
+            $user = auth()->user();
+            $agents = DB::table('users')->where([['role', '!=', 'admin']])->get();
+            if($user->role == "admin")
+                $tickets = DB::table('addtickets')->limit(5)->orderBy('id', 'DESC')->get();
+            else
+                $tickets = DB::table('addtickets')->where('user_id',$user->id)->limit(5)->orderBy('id', 'DESC')->get();
+            $products = DB::table('products')->get();
+            $product = $products;
+            $departments = DB::table('departments')->get();
+            $data = $departments;
+            $dynamic_agent_id = $user->id;
+            $dynamic_agent_role = $user->role;
+            $dynamic_agent_name = $user->name;
+            return view('addticket', compact('dynamic_agent_name','dynamic_agent_role','data','product','tickets','agents','dynamic_agent_id'));
+        }
+        
+        return redirect("login")->withSuccess('You are not allowed to access');
+    }
      
     public function showDepartmentName($id)
     {
@@ -298,7 +440,13 @@ class PanelController extends Controller
     
     public function ajaxRequest(Request $request)
     {
-        $realted_tickets = Addticket::orderBy('id','desc')->where([['order_number', "=", $request->input('order_number')],['close', "=", 0]])->get();
+        $realted_tickets = Addticket::orderBy('id','desc')->where([
+            ['order_number', "=", $request->input('order_number')]
+            ])->orWhere([
+                ['phone', "=", $request->input('phone')]
+                ])->orWhere([
+                    ['email', "=", $request->input('email')]
+                    ])->get();
         if($realted_tickets->isEmpty())
         {
             ?>
@@ -320,6 +468,14 @@ class PanelController extends Controller
         
     }
     
+    public function ajaxFileUpload(Request $request)
+    {
+        echo "<pre>";
+        print_r($_POST);
+        print_r($request->file());
+        die;
+    }
+    
     /**
      * Update the specified resource in storage.
      *
@@ -329,10 +485,6 @@ class PanelController extends Controller
      */
     public function assign(Request $request)
     {
-        
-        //echo "<pre>";
-        // print_r($request->input()); die;
-        
         $addticket = Addticket::find($request->input('id'));
         $varattachment = new TicketAttachments();
         
@@ -342,21 +494,36 @@ class PanelController extends Controller
         $addticket->call_type = $request->input('call_type');
         $addticket->department_id = $request->input('department_id');
         $addticket->product_id = $request->input('product_id');
+        $addticket->customer_name = $request->input('customer_name');
         $addticket->phone = $request->input('phone');
+        //customer_name
         $addticket->email = $request->input('email');
         $addticket->subject = $request->input('subject');
         $addticket->notes = $request->input('notes');
         $addticket->internal_notes = $request->input('internal_notes');
-        $addticket->user_id = $request->input('agent_id');
-        
-        $addticket->close = (null !== $request->input('close') ) ? $request->input('close'):0;
-        if($addticket->close == 0)
+        // $addticket->user_id = $request->input('agent_id');
+        $addticket->status = $request->input('status');
+        if($addticket->status == "open")
         {
             $addticket->open = 1;
-        }else{
+            $addticket->close = 0;
+            $addticket->assign = 0;
+        }else if($addticket->status == "close")
+        {
             $addticket->open = 0;
+            $addticket->close = 1;
+            $addticket->assign = 0;
+        }else if($addticket->status == "assign")
+        {
+            $addticket->assign = 1;
+            $addticket->close = 0;
+            $addticket->open = 0;
+            
+        }else{
+            $addticket->open = 1;
+            $addticket->assign = 0;
+            $addticket->close = 0;
         }
-        $addticket->assign = 1;
         
         $result = $addticket->save();
         /**
@@ -374,24 +541,28 @@ class PanelController extends Controller
         
         $intraction_id = $intraction->id;
         
-        Log::emergency("Notes: " . $intraction->notes . " - Agent");
-        /*$files = [];
-        if($request->hasfile('file'))
+        /**
+         * file upload
+         **/
+        if($request->hasfile('file')) 
         {
             foreach($request->file('file') as $file)
             {
-                $name = time().'_'.$file->getClientOriginalName();
-                $filePath = $file->file('file')->storeAs('uploads', $name, 'public');
-                $files['ticket_number'] = $request->input('ticket_number');
-                $files['file'] = $filePath; 
+                $fileName = time().'_'.$file->getClientOriginalName();
+                $filePath = $file->storeAs('uploads', $fileName, 'public');
+                //$imgData[] = $fileName;
+                $imgData[] = $filePath;
             }
             
-            $varattachment = new TicketAttachments();
-            $varattachment->ticket_number = $files['ticket_number'];
-            $varattachment->file = $files['file'];
+            $imagespath = json_encode($imgData);
+            $varattachment->file = $imagespath;
+            $varattachment->ticket_number = $request->input('ticket_number');
+            $varattachment->intraction_id = $intraction_id;
+            $varattachment->agent_id = $request->input('user_id');
             $varattachment->save();
-        }*/
-         
+        }
+        
+        /*
         if($request->file()) {
             $fileName = time().'_'.$request->file->getClientOriginalName();
             $filePath = $request->file('file')->storeAs('uploads', $fileName, 'public');
@@ -403,6 +574,10 @@ class PanelController extends Controller
         $varattachment->ticket_number = $request->input('ticket_number');   
         $varattachment->intraction_id = $intraction_id;
         $varattachment->save();
+        */
+        
+        $agentname = DB::table('users')->select('name')->where('id', $request->input('user_id'))->first();
+        $agentemail = DB::table('users')->select('email')->where('id', $request->input('user_id'))->first();
         
         $arr = array(
             "mail_id"=> 7,
@@ -411,15 +586,15 @@ class PanelController extends Controller
             "to"=>array(
                     array(
                         "email"=> $addticket->email,
-                        "name" => ""
+                        "name" => $request->input('customer_name')
                     ),
                     array(
-                        "email"=> 'chetanwpexperts@gmail.com',
-                        "name" => ""
+                        "email"=> $agentemail->email,
+                        "name" => $agentname->name
                     ),
                     array(
-                        "email"=> '19chetan87sharma@gmail.com',
-                        "name" => ""
+                        "email"=> 'sharmamanoj78@gmail.com',
+                        "name" => "Admin"
                     )
                 )
         );
@@ -434,12 +609,28 @@ class PanelController extends Controller
         $result = curl_exec($ch);
         curl_close($ch);
 
-        return redirect()->route('panel.index')->with('success','Ticket is assigned to another agent successffully.');
+        return redirect()->route('panel.thankyou')->with('success','Ticket is assigned to another agent successffully.');
     }
     
     public function getAgentName($id)
     {
         $agent = DB::table('users')->select('name')->where('id', $id)->first();
         return $agent->name;
+    }
+    
+    public function thankyou()
+    {
+        if(Auth::check()){
+            $user = auth()->user();
+            $role = $user->role;
+            $dynamic_agent_role = $role;
+            $dynamic_agent_id = $user->id;
+            $dynamic_agent_name = $user->name;
+            $dynamic_agent_email = $user->email;
+            
+            return view('thankyou', compact('role','dynamic_agent_name','dynamic_agent_id','dynamic_agent_email','dynamic_agent_role'));
+        }
+        
+        return redirect("login")->withSuccess('You are not allowed to access');
     }
 }

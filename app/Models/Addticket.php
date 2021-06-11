@@ -8,5 +8,5 @@ use Illuminate\Database\Eloquent\Model;
 class Addticket extends Model
 {
     use HasFactory;
-    protected $fillable = ['ticket_number', 'order_number', 'user_id', 'call_type', 'product_id','phone', 'email', 'subject', 'notes', 'internal_notes','department_id','open', 'close', 'assign'];
+    protected $fillable = ['ticket_number', 'order_number', 'user_id', 'call_type', 'product_id','customer_name','phone', 'email', 'subject', 'notes', 'internal_notes','department_id','open', 'close', 'assign','status'];
 }

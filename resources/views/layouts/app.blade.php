@@ -58,6 +58,58 @@
         box-shadow: 0 1px 1px #ccc;
         margin-bottom: 5px;
     }
+    .justify-content-center {
+        margin:100px auto;
+    }
+    .betweensection{
+        background: #ffffff;
+        padding: 0rem;
+        margin-bottom: 0rem;
+    }
+    .dashboard{
+       border-radius: 5px;
+		padding: 1rem;
+		background: #a1c8f1;
+		text-align: center;
+		margin-top: 1rem;
+		color: #000000;
+		font-size: 2em;
+	}
+    ul#fileList {
+        margin-bottom: .48rem;
+        padding: 0;
+    }
+    #fileList li {
+        list-style: none;
+		background: #5f84e8;
+		margin-bottom: .2rem;
+		width: 100%;
+		padding: 0.2rem;
+		border-radius: 5px;
+		text-align: center;
+		font-size: 9px;
+		font-weight: 700;
+		color: #f9f9f9;
+    }
+	#assigned_length{
+		display:none !important;
+	}
+	.welcomemessage {
+		background: #000000;
+		padding: .45rem;
+		font-weight: bold;
+		font-size: 10px;
+		color: #f4f5f7;
+	}
+	.welcomemessage a {
+		background: #2255a4;
+		padding: 3px 14px;
+		margin-left: 1rem;
+		border-radius: 3px;
+		color: #f9f9f9;
+		text-transform: uppercase;
+		font-size: 10px;
+	}
 </style>
 </head>
 
@@ -122,11 +174,21 @@
                 <!-- ============================================================== -->
                 <!-- End Logo -->
                 <!-- ============================================================== -->
+                
                 <div class="navbar-collapse collapse" id="navbarSupportedContent" data-navbarbg="skin5">
                     <!-- ============================================================== -->
                     <!-- toggle and nav items -->
                     <!-- ============================================================== -->
                     <ul class="navbar-nav float-start me-auto">
+                        @guest
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ route('login') }}">Login</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ route('register-user') }}">Register</a>
+                        </li>
+                        @else
+                        
                         <li class="nav-item d-none d-lg-block"><a
                                 class="nav-link sidebartoggler waves-effect waves-light" href="javascript:void(0)"
                                 data-sidebartype="mini-sidebar"><i class="mdi mdi-menu font-24"></i></a></li>
@@ -134,21 +196,22 @@
                         <!-- create new -->
                         <!-- ============================================================== -->
                         <li class="nav-item"> 
-                            <a class="nav-link" href="<?=url("/");?>" aria-expanded="false"><i class="mdi mdi-view-dashboard"></i> <span class="hide-menu">Dashboard</span></a>
+                            <a class="nav-link" href="<?=url("/panel/myaccount");?>" aria-expanded="false"><i class="mdi mdi-view-dashboard"></i> <span class="hide-menu">Dashboard</span></a>
                         </li>
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                <span class="d-none d-md-block">My Account <i class="fa fa-angle-down"></i></span>
-                                <span class="d-block d-md-none"><i class="fa fa-plus"></i></span>
-                            </a>
-                            <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
-                                <li><a class="dropdown-item" href="<?=url("/panel/myaccount");?>">My Account</a></li>
-                                <li><a class="dropdown-item" href="<?=url("/panel/addticket");?>">Add New Ticket</a></li>
-                                <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="<?=url("/panel/reports");?>">Reports</a></li>
-                            </ul>
-                        </li>
-                        
+
+						<?php
+						if($dynamic_agent_role != "admin")
+						{
+							?>
+							<li class="nav-item"><a class="nav-link" href="<?=url("/panel/myaccount");?>">My Account</a></li>
+							<?php
+						}else{
+							?>
+							<li class="nav-item"><a class="nav-link" href="<?=url("/admin");?>">My Account</a></li>
+							<?php
+						}
+						?>
+                        @endguest
                         
                         <!-- ============================================================== -->
                         <!-- Search -->
@@ -161,14 +224,17 @@
                             </form>
                         </li> -->
                     </ul>
+                    @auth
                     <!-- ============================================================== -->
                     <!-- Right side toggle and nav items -->
                     <!-- ============================================================== -->
+					<div class="welcomemessage"> Welcome {{$dynamic_agent_name}} <a href="{{ route('signout') }}">Logout</a></div>
+					<!--
                     <ul class="navbar-nav float-end">
                         <!-- ============================================================== -->
                         <!-- Comment -->
                         <!-- ============================================================== -->
-                        <li class="nav-item dropdown">
+                        <!--<li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                 <i class="mdi mdi-bell font-24"></i>
                             </a>
@@ -184,7 +250,7 @@
                         <!-- ============================================================== -->
                         <!-- ============================================================== -->
                         <!-- Messages -->
-                        <!-- ============================================================== -->
+                        <!-- ============================================================== 
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle waves-effect waves-dark" href="#" id="2" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                  <i class="font-24 mdi mdi-comment-processing"></i>
@@ -193,7 +259,7 @@
                                 <ul class="list-style-none">
                                     <li>
                                         <div class="">
-                                            <!-- Message -->
+                                            <!-- Message 
                                             <a href="javascript:void(0)" class="link border-top">
                                                 <div class="d-flex no-block align-items-center p-10">
                                                     <span class="btn btn-success btn-circle"><i
@@ -204,7 +270,7 @@
                                                     </div>
                                                 </div>
                                             </a>
-                                            <!-- Message -->
+                                            <!-- Message 
                                             <a href="javascript:void(0)" class="link border-top">
                                                 <div class="d-flex no-block align-items-center p-10">
                                                     <span class="btn btn-info btn-circle"><i
@@ -215,7 +281,7 @@
                                                     </div>
                                                 </div>
                                             </a>
-                                            <!-- Message -->
+                                            <!-- Message 
                                             <a href="javascript:void(0)" class="link border-top">
                                                 <div class="d-flex no-block align-items-center p-10">
                                                     <span class="btn btn-primary btn-circle"><i
@@ -226,7 +292,7 @@
                                                     </div>
                                                 </div>
                                             </a>
-                                            <!-- Message -->
+                                            <!-- Message 
                                             <a href="javascript:void(0)" class="link border-top">
                                                 <div class="d-flex no-block align-items-center p-10">
                                                     <span class="btn btn-danger btn-circle"><i
@@ -248,7 +314,7 @@
 
                         <!-- ============================================================== -->
                         <!-- User profile and search -->
-                        <!-- ============================================================== -->
+                        <!-- ============================================================== 
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle text-muted waves-effect waves-dark pro-pic" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                 <img src="{{ URL::to('assets/images/users/1.jpg')}}" alt="user" class="rounded-circle" width="31">
@@ -273,9 +339,11 @@
                         </li>
                         <!-- ============================================================== -->
                         <!-- User profile and search -->
-                        <!-- ============================================================== -->
-                    </ul>
+                        <!-- ============================================================== 
+                    </ul> -->
+                    @endauth
                 </div>
+                
             </nav>
         </header>
         <!-- ============================================================== -->
@@ -286,8 +354,13 @@
         <!-- Page wrapper  -->
         <!-- ============================================================== -->
         <div class="">
-            @include('flash-message')
-            
+			<div class="container">
+				<div class="row">
+					<div class="col-md-12">
+						@include('flash-message')
+					</div>
+				</div>
+			</div>
             @yield('content')
             <!-- ============================================================== -->
             <!-- End Container fluid  -->
@@ -402,18 +475,25 @@
         });*/
         
         $(document).ready(function() {
-          $(".btn-success").click(function(){ 
+			$(".btn-success").click(function(){ 
               var lsthmtl = $(".clone").html();
               $(".increment").after(lsthmtl);
-          });
-          $("body").on("click",".btn-danger",function(){ 
-              $(this).parents(".hdtuto").remove();
-          });
+			});
+			
+			$("body").on("click",".btn-danger",function(){ 
+				$(this).parents(".hdtuto").remove();
+			});
           
-          $('#example').DataTable( {
+			$('#example').DataTable( {
                 select: true,
                 pageLength : 5
-            } );
+            });
+			$('#assigned').DataTable( {
+                select: true,
+				bFilter: false,
+				paging: false,
+				info:     false
+            });
         });
         
         $("#input-order-number").on("change", function(e){
@@ -430,6 +510,50 @@
                 url: "{{ route('panel.request') }}",
                 type:'POST',
                 data: {order_number:order_number},
+                success: function(response) {
+                  $("#relatedOrderNUmber").html(response);
+                }
+            });
+            
+            return false;
+        });
+        
+        $("#email").on("change", function(e){
+            e.preventDefault();
+            $("#relatedOrderNUmber").html("<div class='col-md-12 recentPost'>Loading, please wait...</div>");
+            
+            var email = $(this).val();
+            $.ajaxSetup({
+                headers: {
+                    'X-CSRF-TOKEN': $('meta[name="_token"]').attr('content')
+                }
+            });
+            $.ajax({
+                url: "{{ route('panel.request') }}",
+                type:'POST',
+                data: {email:email},
+                success: function(response) {
+                  $("#relatedOrderNUmber").html(response);
+                }
+            });
+            
+            return false;
+        });
+        
+        $("#phone-mask").on("change", function(e){
+            e.preventDefault();
+            $("#relatedOrderNUmber").html("<div class='col-md-12 recentPost'>Loading, please wait...</div>");
+            
+            var phone = $(this).val();
+            $.ajaxSetup({
+                headers: {
+                    'X-CSRF-TOKEN': $('meta[name="_token"]').attr('content')
+                }
+            });
+            $.ajax({
+                url: "{{ route('panel.request') }}",
+                type:'POST',
+                data: {phone:phone},
                 success: function(response) {
                   $("#relatedOrderNUmber").html(response);
                 }
@@ -463,6 +587,26 @@
             }
         });
         
+        $('#status').change(function(){
+            var selcetedval = $(this).val();
+            if(selcetedval == "assign"){
+                var id = $("#input-row-id").val();
+                $('#ticketform').attr('action',"{{ route('panel.assign') }}");
+                $("#agentlist").show("animate");
+                $("#noupdate").remove();
+            }
+            else if(selcetedval == "open"){
+                $('#btnsubmit').prop('disabled',false);
+				$('input').prop('disabled',false);
+				$('select').prop('disabled',false);
+				$('textarea').prop('disabled',false);
+				$('file').prop('disabled',false);
+            }else{
+                $('#ticketform').attr('action',"{{ route('panel.store') }}");
+                $("#agentlist").hide("animate");
+            }
+        });
+        
         $(function () {
             $(".noteitem").slice(0, 3).show();
             $("#loadMore").on('click', function (e) {
@@ -477,13 +621,6 @@
             });
         });
         
-        $('a[href=#top]').click(function () {
-            $('body,html').animate({
-                scrollTop: 0
-            }, 600);
-            return false;
-        });
-        
         $(window).scroll(function () {
             if ($(this).scrollTop() > 50) {
                 $('.totop a').fadeIn();
@@ -491,6 +628,15 @@
                 $('.totop a').fadeOut();
             }
         });
+        
+        updateList = function() {
+          var input = document.getElementById('files');
+          var output = document.getElementById('fileList');
+        
+          for (var i = 0; i < input.files.length; ++i) {
+            output.innerHTML += '<li>' + input.files.item(i).name + '</li>';
+          }
+        }
 
     </script>
 

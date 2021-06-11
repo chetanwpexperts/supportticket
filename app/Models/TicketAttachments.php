@@ -8,5 +8,5 @@ use Illuminate\Database\Eloquent\Model;
 class TicketAttachments extends Model
 {
     use HasFactory;
-    protected $fillable = ['ticket_number', 'file'];
+    protected $fillable = ['intraction_id','agent_id','ticket_number', 'file'];
 }
