@@ -1,0 +1,4 @@
+[01-Jun-2021 10:08:55 UTC] PHP Fatal error:  Cannot use [] for reading in /home/bookbrot/ticket.bookbrothers.in/storage/framework/views/dbfb93c46187c6637cd5bc3b102fa8b62b956cd2.php on line 297
+[01-Jun-2021 10:10:52 UTC] PHP Fatal error:  Cannot use [] for reading in /home/bookbrot/ticket.bookbrothers.in/storage/framework/views/dbfb93c46187c6637cd5bc3b102fa8b62b956cd2.php on line 297
+[01-Jun-2021 11:30:16 UTC] PHP Fatal error:  Cannot use isset() on the result of an expression (you can use "null !== expression" instead) in /home/bookbrot/ticket.bookbrothers.in/app/Http/Controllers/PanelController.php on line 63
+[01-Jun-2021 11:30:58 UTC] PHP Fatal error:  Cannot use isset() on the result of an expression (you can use "null !== expression" instead) in /home/bookbrot/ticket.bookbrothers.in/app/Http/Controllers/PanelController.php on line 63
